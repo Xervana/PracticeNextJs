@@ -1,8 +1,10 @@
+// programs
 "use client";
+import { use, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   Card,
   CardHeader,
@@ -10,104 +12,184 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
-import { useState, useEffect } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-// ============================================================================
-// DISPLAY COMPONENTS - Reusable UI components for rendering data
-// ============================================================================
+import {Dialog, DialogContent,DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 
-// 1. Single Item Card - Displays individual program details
-function ProgramCard({ program }) {
+import { MoreVertical } from "lucide-react";
+import { on } from "events";
+function ProgramCard({ program, onEdit }) {
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{program.v_programcode}</CardTitle>
-        <CardDescription>
-          ID: {program.v_programid} | Status:{" "}
-          {program.v_isactive ? "Active" : "Inactive"}
-        </CardDescription>
+      <CardHeader className="flex flex-row justify-between items-center">
+        <div>
+          <CardTitle>{program.v_programcode}</CardTitle>
+        </div>
+
+        {/* DROPDOWN MENU OPTIONAL */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onEdit(program)}>
+              Edit
+            </DropdownMenuItem>
+            
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {/* DROPDOWN MENU OPTIONAL */}
       </CardHeader>
       <CardContent>
         <p className="text-sm">
-          {program.v_description || "No description"}
+          {program.v_description || "No further description available."}
         </p>
         {program.v_createdat && (
-          <p className="text-xs text-muted-foreground mt-2">
-            Created: {new Date(program.v_createdat).toLocaleDateString()}
+          <p className="mt-2 text-xs text-muted-foreground">
+            Created at: {new Date(program.v_createdat).toLocaleString()}
           </p>
         )}
+        {/* modified status */ }
+        {program.v_modifiedat && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Modified at: {new Date(program.v_modifiedat).toLocaleString()}
+          </p>
+        )}
+        {/* active status */ }
+        <p className="mt-2 text-xs">
+          Status: {program.v_isactive ? "Active" : "Inactive"}
+        </p>
       </CardContent>
     </Card>
   );
 }
 
-// 2. List Component - Handles loading states and maps through data
-function ProgramsList({ programs, loading }) {
+function ProgramsList({ programs, loading, onEdit }) {
   if (loading) {
     return <p>Loading programs...</p>;
   }
-
-  if (programs.length === 0) {
-    return <p className="text-muted-foreground">No programs found</p>;
+  if (!programs || programs.length === 0) {
+    return <p>No programs available.</p>;
   }
-
   return (
-    <div className="space-y-4">
+    <div className="grid gap-4">
       {programs.map((program) => (
-        <ProgramCard key={program.v_programid} program={program} />
+        <ProgramCard 
+          key={program.v_programid} 
+          program={program} 
+          onEdit={onEdit}
+         
+        />
       ))}
     </div>
   );
 }
 
-// ============================================================================
-// FORM COMPONENTS - Reusable forms for data input
-// ============================================================================
+//EditProgramDialog
+// 1. Fetch first
+function useUpdateProgram(onSuccess) {
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
 
-// 3. Create Form - Form for creating new programs
-function CreateProgramForm({ onSubmit, loading, message }) {
+  const updateProgram = async (programId, e) => {
+    e.preventDefault();
+    setLoading(true);
+    const formData = new FormData(e.target);
+    try {
+      const response = await fetch(`/api/programs/${programId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          programcode: formData.get("programcode"),
+          description: formData.get("description"),
+          isactive: formData.get("isactive") === "true",
+        }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Updated program data:', data);
+        setMessage(`Program updated successfully. ID: ${data.v_programid}`);
+        onSuccess?.();
+      } else {
+        setMessage("Failed to update program");
+      }
+    } catch (error) {
+      setMessage(`Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+  return { updateProgram, loading, message };
+}
+
+// Create form 
+function EditProgramDialog({open,onOpenChange, program, onSuccess}) {
+  const { updateProgram, loading, message } = useUpdateProgram(onSuccess);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    updateProgram(program.v_programid, e);
+  };
+
+  if (!program) return null;
+
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <Field>
-        <FieldLabel htmlFor="code">Program Code</FieldLabel>
-        <Input
-          id="code"
-          name="code"
-          placeholder="e.g., PROG-001"
-          required
-        />
-      </Field>
-
-      <Field>
-        <FieldLabel htmlFor="description">Description</FieldLabel>
-        <Textarea
-          id="description"
-          name="description"
-          placeholder="Describe the program..."
-          rows={5}
-          required
-        />
-      </Field>
-
-      <div className="flex gap-2">
-        <Button type="submit" disabled={loading}>
-          {loading ? "Creating..." : "Create Program"}
-        </Button>
-        <Button variant="outline" type="reset">
-          Cancel
-        </Button>
-      </div>
-
-      {message && <p className="text-sm">{message}</p>}
-    </form>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit Program</DialogTitle>
+          <DialogDescription>Modify program details below.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit}>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="programcode">Program Code</Label>
+              <Input
+                type="text"
+                id="programcode"
+                name="programcode"
+                defaultValue={program.v_programcode}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="description">Description</Label>
+              <Input
+                type="text"
+                id="description"
+                name="description"
+                defaultValue={program.v_description}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="isactive">Active</Label>
+              <select
+                id="isactive"
+                name="isactive"
+                defaultValue={program.isactive ? "true" : "false"}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2"
+              >
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
+              </select>
+            </div>
+          </div>
+          <Button type="submit" disabled={loading}>
+            {loading ? "Loading..." : "Update Program"}
+          </Button>
+          {message && <p>{message}</p>}
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-// ============================================================================
-// CUSTOM HOOKS - Reusable logic for API operations
-// ============================================================================
-
-// 4. Fetch Hook - GET all items from API
 function useFetchPrograms() {
   const [programs, setPrograms] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -119,6 +201,8 @@ function useFetchPrograms() {
       if (response.ok) {
         const data = await response.json();
         setPrograms(data);
+      } else {
+        console.error("Failed to fetch programs");
       }
     } catch (error) {
       console.error("Error fetching programs:", error);
@@ -126,15 +210,80 @@ function useFetchPrograms() {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     fetchPrograms();
   }, []);
-
   return { programs, loading, refetch: fetchPrograms };
 }
 
-// 5. Create Hook - POST new item to API
+export default function ProgramsPage() {
+  const { programs, loading: fetchingPrograms, refetch } = useFetchPrograms();
+  const {createProgram,loading: creatingProgram,message,} = useCreateProgram(refetch);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedProgram, setSelectedProgram] = useState(null);
+
+  const handleEdit = (program) => {
+    setSelectedProgram(program);
+    setEditDialogOpen(true);
+  };
+
+  const handleEditSuccess = () => {
+    setEditDialogOpen(false);
+    setSelectedProgram(null);
+    refetch();
+  }
+
+  // PROGRAMS [localhost:3000/programs]
+  return (
+    <div className="mt-15">
+      <h1>Programs</h1>
+
+      <div>
+        <h2>CREATE PROGRAM</h2>
+        <CreateProgramForm
+          onSubmit={createProgram}
+          loading={creatingProgram}
+          message={message}
+        />
+      </div>
+
+      {/* LIST PROGRAMS */}
+      <div>
+        <h2>PROGRAMS LIST</h2>
+        <ProgramsList 
+          programs={programs} loading={fetchingPrograms} onEdit={handleEdit} />
+      </div>
+      
+      {/* EDIT PROGRAM DIALOG */}
+      <EditProgramDialog
+      open={editDialogOpen}
+      onOpenChange={setEditDialogOpen}
+      program={selectedProgram}
+      onSuccess={handleEditSuccess}
+    />  
+    </div>
+
+    
+  );
+}
+
+function CreateProgramForm({ onSubmit, loading, message }) {
+  return (
+    <form onSubmit={onSubmit}>
+      <Label htmlFor="programcode">Program Code</Label>
+      <Input type="text" id="programcode" name="programcode" />
+      <Label htmlFor="description">Description</Label>
+      <Input type="text" id="description" name="description" />
+      <Button type="submit" disabled={loading}>
+        {loading ? "Loading..." : "Create Program"}
+      </Button>
+      {message && <p>{message}</p>}
+    </form>
+  );
+}
+
+// Create Hook POST
+
 function useCreateProgram(onSuccess) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -143,67 +292,30 @@ function useCreateProgram(onSuccess) {
     e.preventDefault();
     setLoading(true);
     setMessage("");
-
     const formData = new FormData(e.target);
-
     try {
       const response = await fetch("/api/programs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          programcode: formData.get("code"),
+          programcode: formData.get("programcode"),
           description: formData.get("description"),
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        setMessage(`Program created successfully! ID: ${data.id}`);
+        setMessage(`Program created with ID: ${data.id}`);
         e.target.reset();
         onSuccess?.();
       } else {
         setMessage("Failed to create program");
       }
     } catch (error) {
-      setMessage("Error: " + error.message);
+      setMessage(`Error: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
-
   return { createProgram, loading, message };
-}
-
-// ============================================================================
-// MAIN PAGE COMPONENT - Composes all components together
-// ============================================================================
-
-// 6. Main Page - Layout and composition
-export default function ProgramsPage() {
-  const { programs, loading: fetchingPrograms, refetch } = useFetchPrograms();
-  const { createProgram, loading: creatingProgram, message } = useCreateProgram(refetch);
-
-  return (
-    <div className="w-full max-w-6xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">Programs</h1>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Create Form Section */}
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Create Program</h2>
-          <CreateProgramForm
-            onSubmit={createProgram}
-            loading={creatingProgram}
-            message={message}
-          />
-        </div>
-
-        {/* List Section */}
-        <div>
-          <h2 className="text-xl font-semibold mb-4">All Programs</h2>
-          <ProgramsList programs={programs} loading={fetchingPrograms} />
-        </div>
-      </div>
-    </div>
-  );
 }

@@ -181,12 +181,12 @@ function ProgramsTable() {
                 timeZone: "Asia/Manila",
               })}
             </TableCell>
-            <TableCell>
+            <TableCell className="text-muted-foreground text-sm">
               {program.v_modifiedat
                 ? new Date(program.v_modifiedat).toLocaleString("en-PH", {
                     timeZone: "Asia/Manila",
                   })
-                : ""}
+                : "—"}
             </TableCell>
           </TableRow>
         ))}

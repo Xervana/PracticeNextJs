@@ -23,19 +23,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useEffect} from "react";
+import { useEffect } from "react";
 import { Plus } from "lucide-react";
 
 export default function ProgramsPage() {
-      return (
+  return (
     <div className="p-8">
       <CreateProgramFormDialog />
+      <div className="mt-8">
+        <ProgramsTable />
+      </div>
     </div>
   );
 }
 
 function CreateProgramFormDialog() {
-   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const { createProgram, loading, message } = useCreateProgram(() => {
     console.log("Program created successfully!");
     setIsModalOpen(false);
@@ -61,6 +64,7 @@ function CreateProgramFormDialog() {
             onSubmit={createProgram}
             loading={loading}
             message={message}
+            onCancel={() => setIsModalOpen(false)}
           />
         </DialogContent>
       </Dialog>
@@ -68,12 +72,11 @@ function CreateProgramFormDialog() {
   );
 }
 
-function CreateProgramForm({ onSubmit, loading, message }) {
-        const [programcode, setProgramcode] = useState("");
-      const [description, setDescription] = useState("");
+function CreateProgramForm({ onSubmit, loading, message, onCancel }) {
+  const [programcode, setProgramcode] = useState("");
+  const [description, setDescription] = useState("");
 
-      const isFormValid = programcode.trim() !== "" && description.trim() !== "";
-  
+  const isFormValid = programcode.trim() !== "" && description.trim() !== "";
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
       <div>
@@ -102,9 +105,10 @@ function CreateProgramForm({ onSubmit, loading, message }) {
           onChange={(e) => setDescription(e.target.value)}
         />
       </div>
-      <Button type="submit" disabled={loading || !isFormValid} >
+      <Button type="submit" disabled={loading || !isFormValid}>
         {loading ? "Creating..." : "Create Program"}
       </Button>
+      <Button onClick={onCancel}>Cancel</Button>
       {message && <p>{message}</p>}
     </form>
   );
@@ -146,3 +150,73 @@ function useCreateProgram(onSuccess) {
   return { createProgram, loading, message };
 }
 
+function ProgramsTable() {
+  const { programs, loading, error } = useFetchPrograms();
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error: {error}</p>;
+
+  return (
+    <Table>
+      <TableCaption>A list of programs.</TableCaption>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-[100px]">Program Code</TableHead>
+          <TableHead>Description</TableHead>
+          <TableHead>isActive</TableHead>
+          <TableHead>Created At</TableHead>
+          <TableHead>Modified At</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {programs.map((program) => (
+          <TableRow key={program.v_programid}>
+            <TableCell className="font-medium">
+              {program.v_programcode}
+            </TableCell>
+            <TableCell>{program.v_description}</TableCell>
+            <TableCell>{program.v_isactive ? "Active" : "Inactive"}</TableCell>
+            <TableCell>
+              {new Date(program.v_createdat).toLocaleString("en-PH", {
+                timeZone: "Asia/Manila",
+              })}
+            </TableCell>
+            <TableCell>
+              {program.v_modifiedat
+                ? new Date(program.v_modifiedat).toLocaleString("en-PH", {
+                    timeZone: "Asia/Manila",
+                  })
+                : ""}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+function useFetchPrograms() {
+  const [programs, setPrograms] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchPrograms = async () => {
+      try {
+        const response = await fetch("/api/programs");
+        if (!response.ok) {
+          throw new Error("Failed to fetch programs");
+        }
+        const data = await response.json();
+        setPrograms(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPrograms();
+  }, []);
+
+  return { programs, loading, error };
+}

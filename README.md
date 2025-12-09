@@ -11,7 +11,7 @@ A modern web application built with Next.js 15 for managing educational programs
 ## 🛠️ Installation
 
 ```bash
-git clone https://github.com/yourusername/your-repo-name.git
+git clone https://github.com/Xervana/PracticeNextJs.git
 cd my-app
 npm install
 ```

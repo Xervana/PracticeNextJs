@@ -24,22 +24,45 @@ import {
 } from "@/components/ui/table";
 import { useEffect } from "react";
 import { Plus } from "lucide-react";
-
+import { useCallback } from "react";
 export default function ProgramsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [Program, setProgram] = useState(null);
+  const [refetchPrograms, setRefetchPrograms] = useState(() => () => {});
+
+  const handleRowClick = (program) => {
+    console.log("Clicked program:", program);
+    setProgram(program);
+    setIsCreateModalOpen(true);
+  };
+
+  const handleProgramCreated = (createdProgramCode) => {
+    console.log("Program created successfully with code:", createdProgramCode);
+    setIsCreateModalOpen(false);
+    setSearchQuery(createdProgramCode || ""); // Add fallback to empty string
+    refetchPrograms();
+  };
   return (
     <div className="p-8">
       {/* MODAL */}
       <CreateProgramFormDialog
         isModalOpen={isCreateModalOpen}
         setIsModalOpen={setIsCreateModalOpen}
+        Program={Program}
+        onProgramCreated={handleProgramCreated}
       />
       {/* TOP COMPONENTS */}
       <div>
         {/* BUTTON */}
         <div className="flex items-center justify-between mb-4">
-          <Button variant="primary" onClick={() => setIsCreateModalOpen(true)}>
+          <Button
+            variant="primary"
+            onClick={() => {
+              setIsCreateModalOpen(true);
+              setProgram(null);
+            }}
+          >
             <Plus className="mr-2 h-4 w-4" />
             Create New Program
           </Button>
@@ -57,32 +80,62 @@ export default function ProgramsPage() {
       </div>
       {/* TABLE with search functionality */}
       <div className="mt-8">
-        <ProgramsTable searchQuery={searchQuery} />
+        <ProgramsTable
+          searchQuery={searchQuery}
+          onRowClick={handleRowClick}
+          setRefetchCallback={setRefetchPrograms}
+        />
       </div>
     </div>
   );
 }
 
-function CreateProgramFormDialog({ isModalOpen, setIsModalOpen }) {
-  const { createProgram, loading, message } = useCreateProgram(() => {
-    console.log("Program created successfully!");
-    setIsModalOpen(false);
+function CreateProgramFormDialog({
+  isModalOpen,
+  setIsModalOpen,
+  Program,
+  onProgramCreated,
+}) {
+  const {
+    createProgram,
+    loading: createLoading,
+    message: createMessage,
+  } = useCreateProgram((programCode) => {
+    onProgramCreated(programCode);
   });
+
+  const {
+    updateProgram,
+    loading: updateLoading,
+    message: updateMessage,
+  } = useUpdateProgram((programCode) => {
+    onProgramCreated(programCode);
+  }, Program?.v_programid);
+
+  const handleSubmit = Program ? updateProgram : createProgram;
+  const loading = Program ? updateLoading : createLoading;
+  const message = Program ? updateMessage : createMessage;
   return (
     <div>
       <h1>Programs Page</h1>
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Create New Program</DialogTitle>
+            <DialogTitle>
+              {" "}
+              {Program ? "Edit Program" : "Create New Program"}
+            </DialogTitle>
             <DialogDescription>
-              Fill in the form below to create a new program.
+              {Program
+                ? `Editing Program: ${Program.v_programcode}`
+                : "Fill out the form below to create a new program."}
             </DialogDescription>
           </DialogHeader>
           <CreateProgramForm
-            onSubmit={createProgram}
+            onSubmit={handleSubmit}
             loading={loading}
             message={message}
+            Program={Program}
             onCancel={() => setIsModalOpen(false)}
           />
         </DialogContent>
@@ -90,10 +143,22 @@ function CreateProgramFormDialog({ isModalOpen, setIsModalOpen }) {
     </div>
   );
 }
-
-function CreateProgramForm({ onSubmit, loading, message, onCancel }) {
+function CreateProgramForm({ onSubmit, loading, message, onCancel, Program }) {
   const [programcode, setProgramcode] = useState("");
   const [description, setDescription] = useState("");
+  const [isActive, setIsActive] = useState(true);
+
+  useEffect(() => {
+    if (Program) {
+      setProgramcode(Program.v_programcode || "");
+      setDescription(Program.v_description || "");
+      setIsActive(Program.v_isactive ?? true);
+    } else {
+      setProgramcode("");
+      setDescription("");
+      setIsActive(true);
+    }
+  }, [Program]);
 
   const isFormValid = programcode.trim() !== "" && description.trim() !== "";
   return (
@@ -124,20 +189,48 @@ function CreateProgramForm({ onSubmit, loading, message, onCancel }) {
           onChange={(e) => setDescription(e.target.value)}
         />
       </div>
+      {Program && (
+        <div>
+          <Label htmlFor="isActive" className="block text-sm font-medium mb-1">
+            Status
+          </Label>
+          <select
+            id="isActive"
+            name="isActive"
+            value={String(isActive)}
+            onChange={(e) => setIsActive(e.target.value === "true")}
+            className="w-full border border-gray-300 rounded px-2 py-1"
+          >
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+        </div>
+      )}
       <Button type="submit" disabled={loading || !isFormValid}>
-        {loading ? "Creating..." : "Create Program"}
+        {loading
+          ? Program
+            ? "Updating..."
+            : "Creating..."
+          : Program
+          ? "Update Program"
+          : "Create Program"}
       </Button>
-      <Button onClick={onCancel}>Cancel</Button>
-      {message && <p>{message}</p>}
+      <Button type="button" onClick={onCancel}>
+        Cancel
+      </Button>
     </form>
   );
 }
 
 // Component to display programs in a table with search functionality
-function ProgramsTable({ searchQuery }) {
-  const { programs, loading, error } = useFetchPrograms();
+function ProgramsTable({ searchQuery, onRowClick, setRefetchCallback }) {
+  const { programs, loading, error, refetch } = useFetchPrograms();
   const [filterCategory, setFilterCategory] = useState("All");
   const [codeFilter, setCodeFilter] = useState("All");
+
+  useEffect(() => {
+    setRefetchCallback(() => refetch);
+  }, []);
 
   if (loading) return <p>Loading...</p>;
   if (error) return <p>Error: {error}</p>;
@@ -166,7 +259,9 @@ function ProgramsTable({ searchQuery }) {
         );
 
   // SELECTION FILTER by Parent SearchFilteredData
-  const codeDropdownOptions = [...new Set(programs.map((p) => p.v_programcode))];
+  const codeDropdownOptions = [
+    ...new Set(programs.map((p) => p.v_programcode)),
+  ];
   // Filter
   const newfilteredCategory =
     codeFilter === "All"
@@ -217,7 +312,10 @@ function ProgramsTable({ searchQuery }) {
         </TableHeader>
         <TableBody>
           {newfilteredCategory.map((program) => (
-            <TableRow key={program.v_programid}>
+            <TableRow
+              key={program.v_programid}
+              onClick={() => onRowClick(program)}
+            >
               <TableCell className="font-medium">
                 {program.v_programcode}
               </TableCell>
@@ -250,25 +348,28 @@ function useFetchPrograms() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchPrograms = async () => {
-      try {
-        const response = await fetch("/api/programs");
-        if (!response.ok) {
-          throw new Error("Failed to fetch programs");
-        }
-        const data = await response.json();
-        setPrograms(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+  const fetchPrograms = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("/api/programs");
+      if (!response.ok) {
+        throw new Error("Failed to fetch programs");
       }
-    };
+      const data = await response.json();
+      setPrograms(data);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
     fetchPrograms();
   }, []);
 
-  return { programs, loading, error };
+  return { programs, loading, error, refetch: fetchPrograms };
 }
 
 // Custom Hook or Component to Fetch Programs
@@ -294,7 +395,7 @@ function useCreateProgram(onSuccess) {
         const data = await response.json();
         console.log(data);
         setMessage("Program created successfully!");
-        onSuccess?.();
+        onSuccess?.(formData.get("programcode"));
       } else {
         setMessage("Failed to create program.");
       }
@@ -305,4 +406,40 @@ function useCreateProgram(onSuccess) {
     }
   };
   return { createProgram, loading, message };
+}
+
+function useUpdateProgram(onSuccess, programId) {
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const updateProgram = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage("");
+    const formData = new FormData(e.target);
+    try {
+      const response = await fetch(`/api/programs/${programId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          programcode: formData.get("programcode"),
+          description: formData.get("description"),
+          isActive: formData.get("isActive") === "true",
+        }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log(data);
+        setMessage("Program updated successfully!");
+        onSuccess?.(formData.get("programcode")); // Pass the program code
+      } else {
+        setMessage("Failed to update program.");
+      }
+    } catch (error) {
+      setMessage("An error occurred: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  return { updateProgram, loading, message };
 }

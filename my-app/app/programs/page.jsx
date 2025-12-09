@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 
 import {
@@ -27,9 +26,21 @@ import { useEffect } from "react";
 import { Plus } from "lucide-react";
 
 export default function ProgramsPage() {
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   return (
     <div className="p-8">
-      <CreateProgramFormDialog />
+      <CreateProgramFormDialog
+        isModalOpen={isCreateModalOpen}
+        setIsModalOpen={setIsCreateModalOpen}
+      />
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <Button variant="primary" onClick={() => setIsCreateModalOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create New Program
+          </Button>
+        </div>
+      </div>
       <div className="mt-8">
         <ProgramsTable />
       </div>
@@ -37,8 +48,7 @@ export default function ProgramsPage() {
   );
 }
 
-function CreateProgramFormDialog() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+function CreateProgramFormDialog({ isModalOpen, setIsModalOpen }) {
   const { createProgram, loading, message } = useCreateProgram(() => {
     console.log("Program created successfully!");
     setIsModalOpen(false);
@@ -47,12 +57,6 @@ function CreateProgramFormDialog() {
     <div>
       <h1>Programs Page</h1>
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogTrigger asChild>
-          <Button variant="primary">
-            <Plus className="mr-2 h-4 w-4" />
-            Create New Program
-          </Button>
-        </DialogTrigger>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Create New Program</DialogTitle>
@@ -114,6 +118,96 @@ function CreateProgramForm({ onSubmit, loading, message, onCancel }) {
   );
 }
 
+function ProgramsTable() {
+  const { programs, loading, error } = useFetchPrograms();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error: {error}</p>;
+
+  //FOR Search Query to only filter the inputted on Search Box
+  const searchFilteredData = programs.filter((program) =>
+    program.v_programcode.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <div>
+      {/* search bar */}
+      <Input
+        type="text"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder="Search programs..."
+        className="mb-4"
+      />
+      {/* table of programs */}
+      <Table>
+        <TableCaption>A list of programs.</TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[100px]">Program Code</TableHead>
+            <TableHead>Description</TableHead>
+            <TableHead>isActive</TableHead>
+            <TableHead>Created At</TableHead>
+            <TableHead>Modified At</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {searchFilteredData.map((program) => (
+            <TableRow key={program.v_programid}>
+              <TableCell className="font-medium">
+                {program.v_programcode}
+              </TableCell>
+              <TableCell>{program.v_description}</TableCell>
+              <TableCell>
+                {program.v_isactive ? "Active" : "Inactive"}
+              </TableCell>
+              <TableCell>
+                {new Date(program.v_createdat).toLocaleString("en-PH", {
+                  timeZone: "Asia/Manila",
+                })}
+              </TableCell>
+              <TableCell className="text-muted-foreground text-sm">
+                {program.v_modifiedat
+                  ? new Date(program.v_modifiedat).toLocaleString("en-PH", {
+                      timeZone: "Asia/Manila",
+                    })
+                  : ""}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+function useFetchPrograms() {
+  const [programs, setPrograms] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchPrograms = async () => {
+      try {
+        const response = await fetch("/api/programs");
+        if (!response.ok) {
+          throw new Error("Failed to fetch programs");
+        }
+        const data = await response.json();
+        setPrograms(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPrograms();
+  }, []);
+
+  return { programs, loading, error };
+}
+
 // Custom Hook or Component to Fetch Programs
 function useCreateProgram(onSuccess) {
   const [loading, setLoading] = useState(false);
@@ -148,75 +242,4 @@ function useCreateProgram(onSuccess) {
     }
   };
   return { createProgram, loading, message };
-}
-
-function ProgramsTable() {
-  const { programs, loading, error } = useFetchPrograms();
-
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p>Error: {error}</p>;
-
-  return (
-    <Table>
-      <TableCaption>A list of programs.</TableCaption>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-[100px]">Program Code</TableHead>
-          <TableHead>Description</TableHead>
-          <TableHead>isActive</TableHead>
-          <TableHead>Created At</TableHead>
-          <TableHead>Modified At</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {programs.map((program) => (
-          <TableRow key={program.v_programid}>
-            <TableCell className="font-medium">
-              {program.v_programcode}
-            </TableCell>
-            <TableCell>{program.v_description}</TableCell>
-            <TableCell>{program.v_isactive ? "Active" : "Inactive"}</TableCell>
-            <TableCell>
-              {new Date(program.v_createdat).toLocaleString("en-PH", {
-                timeZone: "Asia/Manila",
-              })}
-            </TableCell>
-            <TableCell className="text-muted-foreground text-sm">
-              {program.v_modifiedat
-                ? new Date(program.v_modifiedat).toLocaleString("en-PH", {
-                    timeZone: "Asia/Manila",
-                  })
-                : "—"}
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  );
-}
-
-function useFetchPrograms() {
-  const [programs, setPrograms] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchPrograms = async () => {
-      try {
-        const response = await fetch("/api/programs");
-        if (!response.ok) {
-          throw new Error("Failed to fetch programs");
-        }
-        const data = await response.json();
-        setPrograms(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchPrograms();
-  }, []);
-
-  return { programs, loading, error };
 }

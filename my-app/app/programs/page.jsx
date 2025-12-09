@@ -4,7 +4,14 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +32,7 @@ import {
 import { useEffect } from "react";
 import { Plus } from "lucide-react";
 import { useCallback } from "react";
+
 export default function ProgramsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -37,12 +45,13 @@ export default function ProgramsPage() {
     setIsCreateModalOpen(true);
   };
 
-  const handleProgramCreated = (createdProgramCode) => {
+  const handleProgramCreated = async (createdProgramCode) => {
     console.log("Program created successfully with code:", createdProgramCode);
+    await refetchPrograms(); // Refetch first
+    setSearchQuery(createdProgramCode || ""); // Then set search
     setIsCreateModalOpen(false);
-    setSearchQuery(createdProgramCode || ""); // Add fallback to empty string
-    refetchPrograms();
   };
+  
   return (
     <div className="p-8">
       {/* MODAL */}
@@ -299,46 +308,12 @@ function ProgramsTable({ searchQuery, onRowClick, setRefetchCallback }) {
         ))}
       </select>
       {/* table of programs */}
-      <Table>
-        <TableCaption>A list of programs.</TableCaption>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[100px]">Program Code</TableHead>
-            <TableHead>Description</TableHead>
-            <TableHead>isActive</TableHead>
-            <TableHead>Created At</TableHead>
-            <TableHead>Modified At</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {newfilteredCategory.map((program) => (
-            <TableRow
-              key={program.v_programid}
-              onClick={() => onRowClick(program)}
-            >
-              <TableCell className="font-medium">
-                {program.v_programcode}
-              </TableCell>
-              <TableCell>{program.v_description}</TableCell>
-              <TableCell>
-                {program.v_isactive ? "Active" : "Inactive"}
-              </TableCell>
-              <TableCell>
-                {new Date(program.v_createdat).toLocaleString("en-PH", {
-                  timeZone: "Asia/Manila",
-                })}
-              </TableCell>
-              <TableCell className="text-muted-foreground text-sm">
-                {program.v_modifiedat
-                  ? new Date(program.v_modifiedat).toLocaleString("en-PH", {
-                      timeZone: "Asia/Manila",
-                    })
-                  : ""}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <div className="space-y-4">
+        {newfilteredCategory.map((program) => (
+          <ProgramCard key={program.v_programid} Program={program} onRowClick={onRowClick} setRefetchCallback={setRefetchCallback} />
+        ))}
+      </div>
+    
     </div>
   );
 }
@@ -367,7 +342,7 @@ function useFetchPrograms() {
 
   useEffect(() => {
     fetchPrograms();
-  }, []);
+  }, [fetchPrograms]);
 
   return { programs, loading, error, refetch: fetchPrograms };
 }
@@ -442,4 +417,41 @@ function useUpdateProgram(onSuccess, programId) {
     }
   };
   return { updateProgram, loading, message };
+}
+
+function ProgramCard({ Program, onRowClick}) {
+
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{Program.v_programcode}</CardTitle>
+        <CardDescription>
+          ID: {Program.v_programid} | Status:{" "}
+          {Program.v_isactive ? "Active" : "Inactive"}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm">
+          {Program.v_description || "No description available"}
+        </p>
+        {Program.v_createdat && (
+          <p className="text-xs text-muted-foreground mt-2">
+            Created:{" "}
+            {new Date(Program.v_createdat).toLocaleString("en-PH", {
+              timeZone: "Asia/Manila",
+            })}
+          </p>
+        )}
+        {Program.v_modifiedat
+          ? new Date(Program.v_modifiedat).toLocaleString("en-PH", {
+              timeZone: "Asia/Manila",
+            })
+          : ""}
+      </CardContent>
+      <CardFooter>
+        <Button onClick={() => onRowClick(Program)}>Edit Program</Button>
+      </CardFooter>
+    </Card>
+  );
 }

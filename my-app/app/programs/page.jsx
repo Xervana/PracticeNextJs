@@ -27,22 +27,37 @@ import { Plus } from "lucide-react";
 
 export default function ProgramsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   return (
     <div className="p-8">
+      {/* MODAL */}
       <CreateProgramFormDialog
         isModalOpen={isCreateModalOpen}
         setIsModalOpen={setIsCreateModalOpen}
       />
+      {/* TOP COMPONENTS */}
       <div>
+        {/* BUTTON */}
         <div className="flex items-center justify-between mb-4">
           <Button variant="primary" onClick={() => setIsCreateModalOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Create New Program
           </Button>
         </div>
+        {/* SEARCH BAR */}
+        <div>
+          <Input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search programs..."
+            className="mb-4"
+          />
+        </div>
       </div>
+      {/* TABLE with search functionality */}
       <div className="mt-8">
-        <ProgramsTable />
+        <ProgramsTable searchQuery={searchQuery} />
       </div>
     </div>
   );
@@ -118,28 +133,76 @@ function CreateProgramForm({ onSubmit, loading, message, onCancel }) {
   );
 }
 
-function ProgramsTable() {
+// Component to display programs in a table with search functionality
+function ProgramsTable({ searchQuery }) {
   const { programs, loading, error } = useFetchPrograms();
-  const [searchQuery, setSearchQuery] = useState("");
+  const [filterCategory, setFilterCategory] = useState("All");
+  const [codeFilter, setCodeFilter] = useState("All");
 
   if (loading) return <p>Loading...</p>;
   if (error) return <p>Error: {error}</p>;
 
-  //FOR Search Query to only filter the inputted on Search Box
-  const searchFilteredData = programs.filter((program) =>
-    program.v_programcode.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // SEARCH FILTER
+  const searchFilteredData = programs.filter((program) => {
+    // NULL safety
+    const programCode = program.v_programcode || "";
+    const programDescription = program.v_description || "";
+
+    return (
+      // case insensitive search
+      programCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      programDescription.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
+
+  // SELECTION FILTER by Parent SearchFilteredData
+  const statusDropdownOptions = [...new Set(programs.map((p) => p.v_isactive))];
+  // Filter
+  const filteredCategory =
+    filterCategory === "All"
+      ? searchFilteredData
+      : searchFilteredData.filter(
+          (program) => String(program.v_isactive) === filterCategory
+        );
+
+  // SELECTION FILTER by Parent SearchFilteredData
+  const codeDropdownOptions = [...new Set(programs.map((p) => p.v_programcode))];
+  // Filter
+  const newfilteredCategory =
+    codeFilter === "All"
+      ? filteredCategory
+      : filteredCategory.filter(
+          (program) => String(program.v_programcode) === codeFilter
+        );
 
   return (
     <div>
-      {/* search bar */}
-      <Input
-        type="text"
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        placeholder="Search programs..."
-        className="mb-4"
-      />
+      {/* Status Filter */}
+      <select
+        value={filterCategory}
+        onChange={(e) => setFilterCategory(e.target.value)}
+        className="mb-4 p-2 border border-gray-300 rounded"
+      >
+        {statusDropdownOptions.length > 1 && <option value="All">All</option>}
+        {statusDropdownOptions.map((status) => (
+          <option key={status} value={String(status)}>
+            {String(status ? "Active" : "Inactive")}
+          </option>
+        ))}
+      </select>
+      {/* Code Filter */}
+      <select
+        value={codeFilter}
+        onChange={(e) => setCodeFilter(e.target.value)}
+        className="mb-4 p-2 border border-gray-300 rounded"
+      >
+        {codeDropdownOptions.length > 1 && <option value="All">All</option>}
+        {codeDropdownOptions.map((code) => (
+          <option key={code} value={String(code)}>
+            {String(code)}
+          </option>
+        ))}
+      </select>
       {/* table of programs */}
       <Table>
         <TableCaption>A list of programs.</TableCaption>
@@ -153,7 +216,7 @@ function ProgramsTable() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {searchFilteredData.map((program) => (
+          {newfilteredCategory.map((program) => (
             <TableRow key={program.v_programid}>
               <TableCell className="font-medium">
                 {program.v_programcode}

@@ -6,7 +6,7 @@ export async function POST(request)
     try{
         const body = await request.json();
 
-        const response = await fetch("https://example.com/api/industry", {
+        const response = await fetch("http://localhost:3001/industry", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -23,7 +23,7 @@ export async function POST(request)
 
 export async function GET(){
     try{
-        const response = await fetch("https://example.com/api/industry/All", {
+        const response = await fetch("http://localhost:3001/industry?industryid=All", {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",

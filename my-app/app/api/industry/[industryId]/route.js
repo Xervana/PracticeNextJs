@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server';
 export async function PUT(request, {params})
 {
     try{
@@ -6,7 +7,7 @@ export async function PUT(request, {params})
 
         const body = await request.json();
 
-        const response = await fetch(`https://example.com/api/industry/${industryId}`, {
+        const response = await fetch(`http://localhost:3000/industry?industry=${industryId}`, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",

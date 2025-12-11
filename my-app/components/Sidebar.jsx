@@ -64,11 +64,20 @@ export default function Sidebar() {
           </li>
           <li className="mb-2">
             <Link
-              href="/programs"
+              href="/industry"
               onClick={() => setIsOpen(false)}
               className="hover:bg-gray-700 block py-2 px-2 rounded transition-colors"
             >
               Programs
+            </Link>
+          </li>
+          <li className="mb-2">
+            <Link
+              href="/tenant"
+              onClick={() => setIsOpen(false)}
+              className="hover:bg-gray-700 block py-2 px-2 rounded transition-colors"
+            >
+              Client Admin
             </Link>
           </li>
         </ul>

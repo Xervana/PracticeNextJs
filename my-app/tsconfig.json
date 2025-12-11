@@ -32,7 +32,7 @@
     ".next/types/**/*.ts",
     "**/*.ts",
     "**/*.tsx"
-, "app/students/page.jsx", "components/ui/table.jsx", "components/ui/dialog.jsx", "components/ui/dropdown-menu.jsx"  ],
+, "app/students/page.jsx", "components/ui/table.jsx", "components/ui/dialog.jsx", "components/ui/dropdown-menu.jsx", "app/industry/page.jsx"  ],
   "exclude": [
     "node_modules"
   ]

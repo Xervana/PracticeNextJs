@@ -20,13 +20,18 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
+import { TextArea } from "@/components/ui/textarea";
+
 export default function IndustryPage() {
   const [industries, refetch] = useFetchIndustries();
   const [isModalOpen, setIsModalOpen] = useState(false);
   return (
-    <div>
-      <div>
-        <Button onClick={() => setIsModalOpen(true)}>Insert Industry</Button>
+    <div className="max-w-4xl mx-auto py-8">
+      <div className="p-4">
+        <h1 className="text-3xl font-bold mb-4">Industries</h1>
+        <Button className="mb-4" onClick={() => setIsModalOpen(true)}>
+          Insert Industry
+        </Button>
         <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
           <IndustryForm
             onSuccess={() => {
@@ -45,10 +50,10 @@ export default function IndustryPage() {
 
 function Modal({ isOpen, onClose, children }) {
   return isOpen ? (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Insert Industry</DialogTitle>
+    <Dialog open={isOpen} onOpenChange={onClose} className="max-w-lg">
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader className="mb-4"> 
+          <DialogTitle className="text-lg font-semibold">Insert Industry</DialogTitle>
         </DialogHeader>
         {children}
       </DialogContent>
@@ -58,13 +63,27 @@ function Modal({ isOpen, onClose, children }) {
 
 function IndustryCard({ industry }) {
   return (
-    <Card className="industry-card">
-      <CardHeader>
-        <CardTitle>{industry.v_industryname}</CardTitle>
+    <Card className="mb-4">
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-lg font-semibold">
+          {industry.v_industryname}
+        </CardTitle>
+        <CardDescription className="text-sm text-gray-500">
+          {industry.v_description}
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <p>{industry.v_description}</p>
-        <p>{industry.v_isactive}</p>
+        {industry.v_isactive ? (
+          <p className="text-sm text-green-600 font-medium">Status: Active</p>
+        ) : (
+          <p className="text-sm text-red-600 font-medium">Status: Inactive</p>
+        )}
+        <p>
+          Since {" "}
+          {new Date(industry.v_createdat).toLocaleString("en-PH", {
+            timeZone: "Asia/Manila",
+          })}
+        </p>
       </CardContent>
     </Card>
   );
@@ -133,6 +152,7 @@ function IndustryForm({ onSuccess }) {
     const industry = {
       industryname: industryName,
       description: industryDescription,
+      createdby: 1,
     };
     await insertIndustry(industry);
     setIndustryName("");
@@ -144,19 +164,19 @@ function IndustryForm({ onSuccess }) {
   return (
     <div>
       <form onSubmit={handleSubmit} className="industry-form">
-        <Input
+        <Input className="mb-4"
           type="text"
           placeholder="Industry Name"
           value={industryName}
           onChange={(e) => setIndustryName(e.target.value)}
         />
-        <Input
+        <TextArea className="mb-4 resize-none overflow-hidden"
           type="text"
           placeholder="Industry Description"
           value={industryDescription}
           onChange={(e) => setIndustryDescription(e.target.value)}
         />
-        <Button type="submit" disabled={loading}>
+        <Button className="w-full" type="submit" disabled={loading}>
           {loading ? "Inserting..." : "Insert Industry"}
         </Button>
         {error && <p className="error">Error: {error.message}</p>}

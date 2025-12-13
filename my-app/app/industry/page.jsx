@@ -42,7 +42,7 @@ export default function IndustryPage() {
         </Modal>
       </div>
       {industries.map((industry) => (
-        <IndustryCard key={industry.v_industryid} industry={industry} />
+        <IndustryCard key={industry.v_industryid} industry={industry} onSuccess={() => refetch()} />
       ))}
     </div>
   );
@@ -61,7 +61,8 @@ function Modal({ isOpen, onClose, children }) {
   ) : null;
 }
 
-function IndustryCard({ industry }) {
+function IndustryCard({ industry , onSuccess }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
   return (
     <Card className="mb-4">
       <CardHeader className="space-y-1">
@@ -85,9 +86,22 @@ function IndustryCard({ industry }) {
           })}
         </p>
       </CardContent>
+      <Button className="m-4" variant="outline" size="sm" onClick={() => setIsModalOpen(true)}>
+        View Details
+      </Button>
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+          <IndustryUpdateForm
+            onSuccess={() => {
+              setIsModalOpen(false);
+              onSuccess();
+            }}
+            industry={industry}
+          />
+        </Modal>
     </Card>
   );
 }
+
 
 function useFetchIndustries() {
   const [industries, setIndustries] = useState([]);
@@ -184,4 +198,92 @@ function IndustryForm({ onSuccess }) {
       </form>
     </div>
   );
+}
+
+function IndustryUpdateForm({onSuccess, industry}) {
+  const [industryName, setIndustryName] = useState(industry.v_industryname);
+  const [industryDescription, setIndustryDescription] = useState(industry.v_description);
+  const [industryIsActive, setIndustryIsActive] = useState(industry.v_isactive);
+
+  const [updateIndustry, data, error, loading] = useUpdateIndustry({onSuccess}, industry.v_industryid);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const industry = {
+      industryname: industryName,
+      description: industryDescription,
+      isactive: industryIsActive,
+      modifiedby: 1
+    };
+    await updateIndustry(industry);
+    setIndustryName("");
+    setIndustryDescription("");
+    setIndustryIsActive(true);
+    if (onSuccess) {
+      onSuccess();
+    }
+  };
+
+  return (
+    <div>
+      <form onSubmit={handleSubmit} className="industry-form">
+        <Input className="mb-4"
+          type="text"
+          placeholder="Industry Name"
+          value={industryName}
+          onChange={(e) => setIndustryName(e.target.value)}
+        />
+        <TextArea className="mb-4 resize-none overflow-hidden"
+          type="text"
+          placeholder="Industry Description"
+          value={industryDescription}
+          onChange={(e) => setIndustryDescription(e.target.value)}
+        />
+        <select className="mb-4 w-full p-2 border border-gray-300 rounded-md"
+          value={industryIsActive ? "active" : "inactive"}
+          onChange={(e) => setIndustryIsActive(e.target.value === "active")}
+        >
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+
+        <Button className="w-full" type="submit" disabled={loading}>
+          {loading ? "Updating..." : "Update Industry"}
+        </Button>
+        {error && <p className="error">Error: {error.message}</p>}
+        {data && <p className="success">Industry updated successfully!</p>}
+      </form>
+    </div>
+  );
+}
+
+function useUpdateIndustry({onSuccess}, industryId) {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const updateIndustry = async (industry) => {
+    setLoading(true);
+    setError(null);
+    if (onSuccess) {
+      onSuccess();
+    }
+    try {
+      const response = await fetch(`/api/industry/${industryId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(industry),
+      });
+      const data = await response.json();
+      console.log("Update successful:", data);
+      setData(data);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error updating industry:", error);
+      setError(error);
+      setLoading(false);
+    }
+  };
+
+  return [updateIndustry, data, error, loading];
 }

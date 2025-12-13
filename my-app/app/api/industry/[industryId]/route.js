@@ -7,7 +7,7 @@ export async function PUT(request, {params})
 
         const body = await request.json();
 
-        const response = await fetch(`http://localhost:3000/industry?industry=${industryId}`, {
+        const response = await fetch(`http://localhost:3001/industry?industryid=${industryId}`, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",

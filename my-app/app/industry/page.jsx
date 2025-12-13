@@ -25,6 +25,9 @@ import { TextArea } from "@/components/ui/textarea";
 export default function IndustryPage() {
   const [industries, refetch] = useFetchIndustries();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+
   return (
     <div className="max-w-4xl mx-auto py-8">
       <div className="p-4">
@@ -41,9 +44,19 @@ export default function IndustryPage() {
           />
         </Modal>
       </div>
-      {industries.map((industry) => (
-        <IndustryCard key={industry.v_industryid} industry={industry} onSuccess={() => refetch()} />
-      ))}
+      <Input 
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder="Search industries..."
+        className="mb-4"
+      />
+      {industries
+        .filter((industry) =>
+          industry.v_industryname.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        .map((industry) => (
+          <IndustryCard key={industry.v_industryid} industry={industry} onSuccess={() => refetch()} />
+        ))}
     </div>
   );
 }

@@ -27,20 +27,18 @@ export default function IndustryPage() {
   const [industries, refetch] = useFetchIndustries();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [programs, setPrograms] = useState([]);
   const [filterActive, setFilterActive] = useState("All");
 
- 
   const uniqueStatuses = [...new Set(industries.map((ind) => ind.v_isactive))];
 
-   // Filter programs based on category
+  // Filter programs based on category
   const filteredByIsActive =
     filterActive === "All"
       ? industries
       : industries.filter(
           (industry) => String(industry.v_isactive) === filterActive
         );
-  
+
   return (
     <div className="max-w-4xl mx-auto py-8">
       <div className="p-4">
@@ -59,12 +57,12 @@ export default function IndustryPage() {
       </div>
 
       <div className="px-4">
-        <select 
+        <select
           value={filterActive}
           onChange={(e) => setFilterActive(e.target.value)}
           className="mb-4 p-2 border border-gray-300 rounded"
         >
-           {uniqueStatuses.length > 1 && (
+          {uniqueStatuses.length > 1 && (
             <option value="All">All Statuses</option>
           )}
           {uniqueStatuses.map((status) => (

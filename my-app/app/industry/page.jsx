@@ -21,13 +21,26 @@ import {
 } from "@/components/ui/dialog";
 
 import { TextArea } from "@/components/ui/textarea";
+import { DropdownMenu } from "@radix-ui/react-dropdown-menu";
 
 export default function IndustryPage() {
   const [industries, refetch] = useFetchIndustries();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [programs, setPrograms] = useState([]);
+  const [filterActive, setFilterActive] = useState("All");
 
+ 
+  const uniqueStatuses = [...new Set(industries.map((ind) => ind.v_isactive))];
 
+   // Filter programs based on category
+  const filteredByIsActive =
+    filterActive === "All"
+      ? industries
+      : industries.filter(
+          (industry) => String(industry.v_isactive) === filterActive
+        );
+  
   return (
     <div className="max-w-4xl mx-auto py-8">
       <div className="p-4">
@@ -44,18 +57,42 @@ export default function IndustryPage() {
           />
         </Modal>
       </div>
-      <Input 
+
+      <div className="px-4">
+        <select 
+          value={filterActive}
+          onChange={(e) => setFilterActive(e.target.value)}
+          className="mb-4 p-2 border border-gray-300 rounded"
+        >
+           {uniqueStatuses.length > 1 && (
+            <option value="All">All Statuses</option>
+          )}
+          {uniqueStatuses.map((status) => (
+            <option key={String(status)} value={String(status)}>
+              {String(status ? "Active" : "Inactive")}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <Input
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         placeholder="Search industries..."
         className="mb-4"
       />
-      {industries
+      {filteredByIsActive
         .filter((industry) =>
-          industry.v_industryname.toLowerCase().includes(searchQuery.toLowerCase())
+          industry.v_industryname
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase())
         )
         .map((industry) => (
-          <IndustryCard key={industry.v_industryid} industry={industry} onSuccess={() => refetch()} />
+          <IndustryCard
+            key={industry.v_industryid}
+            industry={industry}
+            onSuccess={() => refetch()}
+          />
         ))}
     </div>
   );
@@ -65,8 +102,10 @@ function Modal({ isOpen, onClose, children }) {
   return isOpen ? (
     <Dialog open={isOpen} onOpenChange={onClose} className="max-w-lg">
       <DialogContent className="sm:max-w-lg">
-        <DialogHeader className="mb-4"> 
-          <DialogTitle className="text-lg font-semibold">Insert Industry</DialogTitle>
+        <DialogHeader className="mb-4">
+          <DialogTitle className="text-lg font-semibold">
+            Insert Industry
+          </DialogTitle>
         </DialogHeader>
         {children}
       </DialogContent>
@@ -74,7 +113,7 @@ function Modal({ isOpen, onClose, children }) {
   ) : null;
 }
 
-function IndustryCard({ industry , onSuccess }) {
+function IndustryCard({ industry, onSuccess }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   return (
     <Card className="mb-4">
@@ -93,28 +132,32 @@ function IndustryCard({ industry , onSuccess }) {
           <p className="text-sm text-red-600 font-medium">Status: Inactive</p>
         )}
         <p>
-          Since {" "}
+          Since{" "}
           {new Date(industry.v_createdat).toLocaleString("en-PH", {
             timeZone: "Asia/Manila",
           })}
         </p>
       </CardContent>
-      <Button className="m-4" variant="outline" size="sm" onClick={() => setIsModalOpen(true)}>
+      <Button
+        className="m-4"
+        variant="outline"
+        size="sm"
+        onClick={() => setIsModalOpen(true)}
+      >
         View Details
       </Button>
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-          <IndustryUpdateForm
-            onSuccess={() => {
-              setIsModalOpen(false);
-              onSuccess();
-            }}
-            industry={industry}
-          />
-        </Modal>
+        <IndustryUpdateForm
+          onSuccess={() => {
+            setIsModalOpen(false);
+            onSuccess();
+          }}
+          industry={industry}
+        />
+      </Modal>
     </Card>
   );
 }
-
 
 function useFetchIndustries() {
   const [industries, setIndustries] = useState([]);
@@ -191,13 +234,15 @@ function IndustryForm({ onSuccess }) {
   return (
     <div>
       <form onSubmit={handleSubmit} className="industry-form">
-        <Input className="mb-4"
+        <Input
+          className="mb-4"
           type="text"
           placeholder="Industry Name"
           value={industryName}
           onChange={(e) => setIndustryName(e.target.value)}
         />
-        <TextArea className="mb-4 resize-none overflow-hidden"
+        <TextArea
+          className="mb-4 resize-none overflow-hidden"
           type="text"
           placeholder="Industry Description"
           value={industryDescription}
@@ -213,19 +258,24 @@ function IndustryForm({ onSuccess }) {
   );
 }
 
-function IndustryUpdateForm({onSuccess, industry}) {
+function IndustryUpdateForm({ onSuccess, industry }) {
   const [industryName, setIndustryName] = useState(industry.v_industryname);
-  const [industryDescription, setIndustryDescription] = useState(industry.v_description);
+  const [industryDescription, setIndustryDescription] = useState(
+    industry.v_description
+  );
   const [industryIsActive, setIndustryIsActive] = useState(industry.v_isactive);
 
-  const [updateIndustry, data, error, loading] = useUpdateIndustry({onSuccess}, industry.v_industryid);
+  const [updateIndustry, data, error, loading] = useUpdateIndustry(
+    { onSuccess },
+    industry.v_industryid
+  );
   const handleSubmit = async (e) => {
     e.preventDefault();
     const industry = {
       industryname: industryName,
       description: industryDescription,
       isactive: industryIsActive,
-      modifiedby: 1
+      modifiedby: 1,
     };
     await updateIndustry(industry);
     setIndustryName("");
@@ -239,19 +289,22 @@ function IndustryUpdateForm({onSuccess, industry}) {
   return (
     <div>
       <form onSubmit={handleSubmit} className="industry-form">
-        <Input className="mb-4"
+        <Input
+          className="mb-4"
           type="text"
           placeholder="Industry Name"
           value={industryName}
           onChange={(e) => setIndustryName(e.target.value)}
         />
-        <TextArea className="mb-4 resize-none overflow-hidden"
+        <TextArea
+          className="mb-4 resize-none overflow-hidden"
           type="text"
           placeholder="Industry Description"
           value={industryDescription}
           onChange={(e) => setIndustryDescription(e.target.value)}
         />
-        <select className="mb-4 w-full p-2 border border-gray-300 rounded-md"
+        <select
+          className="mb-4 w-full p-2 border border-gray-300 rounded-md"
           value={industryIsActive ? "active" : "inactive"}
           onChange={(e) => setIndustryIsActive(e.target.value === "active")}
         >
@@ -269,7 +322,7 @@ function IndustryUpdateForm({onSuccess, industry}) {
   );
 }
 
-function useUpdateIndustry({onSuccess}, industryId) {
+function useUpdateIndustry({ onSuccess }, industryId) {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);

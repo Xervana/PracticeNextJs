@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 
 import { ComCreateForm } from "./components/ComCreateForm";
 import { ComCard } from "./components/ComCard";
-import { useFetchTenants } from "./hooks/UseFetchTenants";
-import { useFetchIndustries } from "./hooks/UseFetchIndustries";
+import { useFetchTenants } from "@/hooks/UseFetchTenants";
+import { useFetchIndustries } from "@/hooks/UseFetchIndustries";
 
 import { ComModal } from "./components/ComModal";
 

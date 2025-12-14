@@ -1,27 +1,14 @@
 "use client";
-import { use, useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../../components/ui/card";
-import { useEffect } from "react";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { ComCreateForm } from "./components/ComCreateForm";
+import { ComCard } from "./components/ComCard";
+import { useFetchTenants } from "./hooks/UseFetchTenants";
+import { useFetchIndustries } from "./hooks/UseFetchIndustries";
 
-import { TextArea } from "@/components/ui/textarea";
-import { DropdownMenu } from "@radix-ui/react-dropdown-menu";
+import { ComModal } from "./components/ComModal";
 
 export default function TenantPage() {
   const [tenants, refetch] = useFetchTenants();
@@ -49,15 +36,15 @@ export default function TenantPage() {
         <Button className="mb-4" onClick={() => setIsModalOpen(true)}>
           Insert Tenant
         </Button>
-        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-          <TenantForm
+        <ComModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+          <ComCreateForm
             industry={allIndustry}
             onSuccess={() => {
               refetch();
               setIsModalOpen(false);
             }}
           />
-        </Modal>
+        </ComModal>
       </div>
       <div className="px-4">
         <select
@@ -89,7 +76,7 @@ export default function TenantPage() {
             .includes(searchQuery.toLowerCase())
         )
         .map((tenant) => (
-          <TenantCard
+          <ComCard
             key={tenant.v_tenantid}
             tenant={tenant}
             industry={allIndustry}
@@ -98,358 +85,4 @@ export default function TenantPage() {
         ))}
     </div>
   );
-}
-
-function Modal({ isOpen, onClose, children }) {
-  return isOpen ? (
-    <Dialog open={isOpen} onOpenChange={onClose} className="max-w-lg">
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader className="mb-4">
-          <DialogTitle className="text-lg font-semibold">
-            Insert Tenant
-          </DialogTitle>
-        </DialogHeader>
-        {children}
-      </DialogContent>
-    </Dialog>
-  ) : null;
-}
-
-function TenantCard({ tenant, onSuccess, industry }) {
-  console.log("JERE", tenant);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  return (
-    <Card className="mb-4">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-lg font-semibold">
-          {tenant.v_businessname}
-        </CardTitle>
-        <CardDescription className="text-sm text-gray-500">
-          {tenant.v_contactemail}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {tenant.v_isactive ? (
-          <p className="text-sm text-green-600 font-medium">Status: Active</p>
-        ) : (
-          <p className="text-sm text-red-600 font-medium">Status: Inactive</p>
-        )}
-        <p>
-          Since{" "}
-          {new Date(tenant.v_createdat).toLocaleString("en-PH", {
-            timeZone: "Asia/Manila",
-          })}
-        </p>
-      </CardContent>
-      <Button
-        className="m-4"
-        variant="outline"
-        size="sm"
-        onClick={() => setIsModalOpen(true)}
-      >
-        View Details
-      </Button>
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-        <TenantUpdateForm
-          onSuccess={() => {
-            setIsModalOpen(false);
-            onSuccess();
-          }}
-          tenant={tenant}
-          industry={industry}
-        />
-      </Modal>
-    </Card>
-  );
-}
-
-function useFetchTenants() {
-  const [tenants, setTenants] = useState([]);
-
-  const fetchTenants = async () => {
-    try {
-      const response = await fetch("/api/tenant");
-      const data = await response.json();
-      setTenants(data);
-      console.log(data);
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch tenants");
-      }
-      return data;
-    } catch (error) {
-      console.error("Error fetching tenants:", error);
-    } finally {
-    }
-  };
-  useEffect(() => {
-    fetchTenants();
-  }, []);
-
-  return [tenants, fetchTenants];
-}
-
-function TenantUpdateForm({ onSuccess, tenant, industry }) {
-  const [tenantIndustryId, setTenantIndustryId] = useState(tenant.v_industryid);
-  const [businessName, setBusinessName] = useState(tenant.v_businessname);
-  const [contactEmail, setContactEmail] = useState(tenant.v_contactemail);
-  const [website, setWebsite] = useState(tenant.v_website);
-
-  console.log("TENANT INDUSTRY ID:", tenantIndustryId);
-
-  const [tenantIsActive, setTenantIsActive] = useState(tenant.v_isactive);
-
-  const [updateTenant, data, error, loading] = useUpdateTenant(
-    { onSuccess },
-    tenant.v_tenantid
-  );
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const tenant = {
-      industryid: tenantIndustryId,
-      businessname: businessName,
-      contactemail: contactEmail,
-      website: website,
-      isactive: tenantIsActive,
-      modifiedby: 1,
-    };
-    const result = await updateTenant(tenant);
-    if (result.success) {
-      setTenantIndustryId("");
-      setBusinessName("");
-      setContactEmail("");
-      setWebsite("");
-      setTenantIsActive(false);
-      if (onSuccess) {
-        onSuccess();
-        console.log("SUCCESS CALLED");
-      }
-    }
-  };
-
-  return (
-    <div>
-      <form onSubmit={handleSubmit} className="tenant-form">
-        <Input
-          required
-          className="mb-4"
-          type="text"
-          placeholder="Tenant Name"
-          value={businessName}
-          onChange={(e) => setBusinessName(e.target.value)}
-        />
-        <Input
-          required
-          className="mb-4 resize-none overflow-hidden"
-          type="text"
-          placeholder="Contact Email"
-          value={contactEmail}
-          onChange={(e) => setContactEmail(e.target.value)}
-        />
-        <Input
-          required
-          className="mb-4"
-          type="text"
-          placeholder="Website"
-          value={website}
-          onChange={(e) => setWebsite(e.target.value)}
-        />
-        <select
-          className="mb-4 w-full p-2 border border-gray-300 rounded-md"
-          value={tenantIndustryId}
-          onChange={(e) => setTenantIndustryId(e.target.value)}
-        >
-          <option value="">Select Industry</option>
-          {industry.map((ind) => (
-            <option key={ind.v_industryid} value={ind.v_industryid}>
-              {ind.v_industryname}
-            </option>
-          ))}
-        </select>
-
-        <select
-          className="mb-4 w-full p-2 border border-gray-300 rounded-md"
-          value={tenantIsActive ? "active" : "inactive"}
-          onChange={(e) => setTenantIsActive(e.target.value === "active")}
-        >
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-        </select>
-
-        <Button className="w-full" type="submit" disabled={loading}>
-          {loading ? "Updating..." : "Update Tenant"}
-        </Button>
-        {error && <p className="error">Error: {error.message}</p>}
-        {data && <p className="success">Tenant updated successfully!</p>}
-      </form>
-    </div>
-  );
-}
-
-function useUpdateTenant({ onSuccess }, tenantId) {
-  const [data, setData] = useState(null);
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const updateTenant = async (tenant) => {
-    setLoading(true);
-    setError(null);
-    if (onSuccess) {
-      onSuccess();
-    }
-    try {
-      const response = await fetch(`/api/tenant/${tenantId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(tenant),
-      });
-      const data = await response.json();
-      console.log("Update successful:", data);
-      setData(data);
-      setLoading(false);
-      return { success: true, data };
-    } catch (error) {
-      console.error("Error updating tenant:", error);
-      setError(error);
-      setLoading(false);
-      return { success: true, data };
-    }
-  };
-
-  return [updateTenant, data, error, loading];
-}
-
-// INSERT AREA
-
-function useInsertTenant() {
-  const [data, setData] = useState(null);
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const insertTenant = async (tenant) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/tenant", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(tenant),
-      });
-      const data = await response.json();
-      console.log("Insert successful:", data);
-      setData(data);
-      setLoading(false);
-      return { success: true, data };
-    } catch (error) {
-      console.error("Error inserting tenant:", error);
-      setError(error);
-      setLoading(false);
-      return { success: false, error };
-    }
-  };
-
-  return [insertTenant, data, error, loading];
-}
-
-// USAGE EXAMPLE
-
-function TenantForm({ onSuccess, industry }) {
-  const [businessName, setBusinessName] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
-  const [website, setWebsite] = useState("");
-  const [selectedIndustryId, setSelectedIndustryId] = useState("");
-
-  const [insertTenant, data, error, loading] = useInsertTenant();
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const tenant = {
-      industryid: selectedIndustryId,
-      businessname: businessName,
-      contactemail: contactEmail,
-      website: website,
-      createdby: 1,
-    };
-    console.log("SUBMITTENANT:", tenant);
-    const result = await insertTenant(tenant);
-    if (result.success) {
-      setSelectedIndustryId("");
-      setBusinessName("");
-      setContactEmail("");
-      setWebsite("");
-      if (onSuccess) {
-        onSuccess();
-        console.log("SUCCESS CALLED");
-      }
-    }
-  };
-  return (
-    <div>
-      <form onSubmit={handleSubmit} className="tenant-form">
-        <Input
-        required
-          className="mb-4"
-          type="text"
-          placeholder="Tenant Name"
-          value={businessName}
-          onChange={(e) => setBusinessName(e.target.value)}
-        />
-        <Input
-        required
-          className="mb-4"
-          type="text"
-          placeholder="Website"
-          value={website}
-          onChange={(e) => setWebsite(e.target.value)}
-        />
-        <Input
-          required
-          className="mb-4"
-          type="text"
-          placeholder="Contact Email"
-          value={contactEmail}
-          onChange={(e) => setContactEmail(e.target.value)}
-        />
-        <select
-          className="mb-4 w-full p-2 border border-gray-300 rounded-md"
-          value={selectedIndustryId}
-          onChange={(e) => setSelectedIndustryId(e.target.value)}
-        >
-          <option value="">Select Industry</option>
-          {industry.map((ind) => (
-            <option key={ind.v_industryid} value={ind.v_industryid}>
-              {ind.v_industryname}
-            </option>
-          ))}
-        </select>
-        <Button className="w-full" type="submit" disabled={loading}>
-          {loading ? "Inserting..." : "Insert Tenant"}
-        </Button>
-        {error && <p className="error">Error: {error.message}</p>}
-        {data && <p className="success">Tenant inserted successfully!</p>}
-      </form>
-    </div>
-  );
-}
-
-function useFetchIndustries(industryId) {
-  const [industries, setIndustries] = useState([]);
-
-  const fetchIndustries = async () => {
-    try {
-      const response = await fetch(`/api/industry/${industryId}`);
-      const data = await response.json();
-      setIndustries(data);
-      console.log(data);
-    } catch (error) {
-      console.error("Error fetching industries:", error);
-    } finally {
-    }
-  };
-  useEffect(() => {
-    fetchIndustries();
-  }, []);
-
-  return [industries, fetchIndustries];
 }

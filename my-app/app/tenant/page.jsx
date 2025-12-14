@@ -26,7 +26,6 @@ import { DropdownMenu } from "@radix-ui/react-dropdown-menu";
 export default function TenantPage() {
   const [tenants, refetch] = useFetchTenants();
   const [allIndustry, refetchIndustries] = useFetchIndustries("all");
-  const [tenantIndustries, setTenantIndustries] = useFetchIndustries();
 
   console.log("All INDUSTRIES:", allIndustry);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -93,6 +92,7 @@ export default function TenantPage() {
           <TenantCard
             key={tenant.v_tenantid}
             tenant={tenant}
+            industry={allIndustry}
             onSuccess={() => refetch()}
           />
         ))}
@@ -115,7 +115,7 @@ function Modal({ isOpen, onClose, children }) {
   ) : null;
 }
 
-function TenantCard({ tenant, onSuccess }) {
+function TenantCard({ tenant, onSuccess, industry }) {
   console.log("JERE", tenant);
   const [isModalOpen, setIsModalOpen] = useState(false);
   return (
@@ -156,6 +156,7 @@ function TenantCard({ tenant, onSuccess }) {
             onSuccess();
           }}
           tenant={tenant}
+          industry={industry}
         />
       </Modal>
     </Card>
@@ -188,11 +189,13 @@ function useFetchTenants() {
   return [tenants, fetchTenants];
 }
 
-function TenantUpdateForm({ onSuccess, tenant }) {
+function TenantUpdateForm({ onSuccess, tenant, industry }) {
   const [tenantIndustryId, setTenantIndustryId] = useState(tenant.v_industryid);
   const [businessName, setBusinessName] = useState(tenant.v_businessname);
   const [contactEmail, setContactEmail] = useState(tenant.v_contactemail);
   const [website, setWebsite] = useState(tenant.v_website);
+
+  console.log("TENANT INDUSTRY ID:", tenantIndustryId);
 
   const [tenantIsActive, setTenantIsActive] = useState(tenant.v_isactive);
 
@@ -203,19 +206,24 @@ function TenantUpdateForm({ onSuccess, tenant }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const tenant = {
+      industryid: tenantIndustryId,
       businessname: businessName,
       contactemail: contactEmail,
       website: website,
       isactive: tenantIsActive,
       modifiedby: 1,
     };
-    await updateTenant(tenant);
-    setTenantName("");
-    setTenantDescription("");
-    setTenantIndustryId("");
-    setTenantIsActive(true);
-    if (onSuccess) {
-      onSuccess();
+    const result = await updateTenant(tenant);
+    if (result.success) {
+      setTenantIndustryId("");
+      setBusinessName("");
+      setContactEmail("");
+      setWebsite("");
+      setTenantIsActive(false);
+      if (onSuccess) {
+        onSuccess();
+        console.log("SUCCESS CALLED");
+      }
     }
   };
 
@@ -223,6 +231,7 @@ function TenantUpdateForm({ onSuccess, tenant }) {
     <div>
       <form onSubmit={handleSubmit} className="tenant-form">
         <Input
+          required
           className="mb-4"
           type="text"
           placeholder="Tenant Name"
@@ -230,6 +239,7 @@ function TenantUpdateForm({ onSuccess, tenant }) {
           onChange={(e) => setBusinessName(e.target.value)}
         />
         <Input
+          required
           className="mb-4 resize-none overflow-hidden"
           type="text"
           placeholder="Contact Email"
@@ -237,12 +247,26 @@ function TenantUpdateForm({ onSuccess, tenant }) {
           onChange={(e) => setContactEmail(e.target.value)}
         />
         <Input
+          required
           className="mb-4"
           type="text"
           placeholder="Website"
           value={website}
           onChange={(e) => setWebsite(e.target.value)}
         />
+        <select
+          className="mb-4 w-full p-2 border border-gray-300 rounded-md"
+          value={tenantIndustryId}
+          onChange={(e) => setTenantIndustryId(e.target.value)}
+        >
+          <option value="">Select Industry</option>
+          {industry.map((ind) => (
+            <option key={ind.v_industryid} value={ind.v_industryid}>
+              {ind.v_industryname}
+            </option>
+          ))}
+        </select>
+
         <select
           className="mb-4 w-full p-2 border border-gray-300 rounded-md"
           value={tenantIsActive ? "active" : "inactive"}
@@ -284,10 +308,12 @@ function useUpdateTenant({ onSuccess }, tenantId) {
       console.log("Update successful:", data);
       setData(data);
       setLoading(false);
+      return { success: true, data };
     } catch (error) {
       console.error("Error updating tenant:", error);
       setError(error);
       setLoading(false);
+      return { success: true, data };
     }
   };
 
@@ -362,6 +388,7 @@ function TenantForm({ onSuccess, industry }) {
     <div>
       <form onSubmit={handleSubmit} className="tenant-form">
         <Input
+        required
           className="mb-4"
           type="text"
           placeholder="Tenant Name"
@@ -369,6 +396,7 @@ function TenantForm({ onSuccess, industry }) {
           onChange={(e) => setBusinessName(e.target.value)}
         />
         <Input
+        required
           className="mb-4"
           type="text"
           placeholder="Website"
@@ -376,6 +404,7 @@ function TenantForm({ onSuccess, industry }) {
           onChange={(e) => setWebsite(e.target.value)}
         />
         <Input
+          required
           className="mb-4"
           type="text"
           placeholder="Contact Email"

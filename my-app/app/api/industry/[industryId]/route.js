@@ -21,3 +21,20 @@ export async function PUT(request, {params})
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     } 
 }
+
+export async function GET(request, { params }){
+    try{
+        const {industryId} = params;
+        const response = await fetch(`http://localhost:3001/industry?industryid=${industryId}`, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+            },
+        });
+        const data = await response.json();
+        return NextResponse.json(data, { status: 200 });
+    }
+    catch(error){
+        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    }
+}

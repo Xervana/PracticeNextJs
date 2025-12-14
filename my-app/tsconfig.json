@@ -35,6 +35,6 @@
     "app/industry/page.jsx",
     "app/page.jsx",
     "app/dashboard/page.jsx"
-, "components/ui/scroll-area.jsx"  ],
+, "components/ui/scroll-area.jsx", "app/tenant/page.jsx"  ],
   "exclude": ["node_modules"]
 }

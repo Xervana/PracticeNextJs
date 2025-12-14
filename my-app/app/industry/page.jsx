@@ -25,6 +25,7 @@ import { DropdownMenu } from "@radix-ui/react-dropdown-menu";
 
 export default function IndustryPage() {
   const [industries, refetch] = useFetchIndustries();
+  console.log("INDUSTRIES:", industries);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterActive, setFilterActive] = useState("All");
@@ -162,7 +163,7 @@ function useFetchIndustries() {
 
   const fetchIndustries = async () => {
     try {
-      const response = await fetch("/api/industry");
+      const response = await fetch("/api/industry/all");
       const data = await response.json();
       setIndustries(data);
       console.log(data);

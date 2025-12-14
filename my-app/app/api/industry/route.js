@@ -21,19 +21,4 @@ export async function POST(request)
     }
 }
 
-export async function GET(){
-    try{
-        const response = await fetch("http://localhost:3001/industry?industryid=All", {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json",
-            },
-        });
-        const data = await response.json();
-        return NextResponse.json(data, { status: 200 });
-    }
-    catch(error){
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
-    }
-}
 
